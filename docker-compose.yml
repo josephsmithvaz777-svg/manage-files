@@ -1,0 +1,18 @@
+services:
+  amaim-file-server:
+    build: .
+    container_name: amaim-file-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - amaim_files:/app/files
+    environment:
+      - PORT=3000
+      - BASE_URL=https://www.amaim.lat
+      # Opcional: protege la UI con una API key
+      # - API_KEY=tu-clave-secreta
+
+volumes:
+  amaim_files:
+    name: amaim_files

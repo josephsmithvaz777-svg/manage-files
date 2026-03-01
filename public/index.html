@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Amaim File Server</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f17;
+      --surface: #161924;
+      --surface2: #1e2233;
+      --border: #2a2f45;
+      --accent: #6c63ff;
+      --accent2: #a78bfa;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .logo {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 24px rgba(108,99,255,0.4);
+    }
+    .header h1 { font-size: 24px; font-weight: 700; }
+    .header p { color: var(--muted); font-size: 14px; margin-top: 2px; }
+
+    /* Stats Bar */
+    .stats {
+      display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 24px;
+      flex: 1; min-width: 140px;
+    }
+    .stat-card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+    .stat-card .value.accent { color: var(--accent2); }
+
+    /* Upload Zone */
+    .upload-section {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 48px;
+      text-align: center;
+      margin-bottom: 28px;
+      transition: all .2s;
+      cursor: pointer;
+      position: relative;
+    }
+    .upload-section.drag-over {
+      border-color: var(--accent);
+      background: rgba(108,99,255,.07);
+      box-shadow: 0 0 32px rgba(108,99,255,.15);
+    }
+    .upload-section .icon { font-size: 48px; margin-bottom: 16px; }
+    .upload-section h2 { font-size: 20px; font-weight: 600; }
+    .upload-section p { color: var(--muted); margin-top: 8px; font-size: 14px; }
+    #file-input { display: none; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 8px;
+      font-size: 14px; font-weight: 500;
+      border: none; cursor: pointer;
+      transition: all .15s; text-decoration: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(108,99,255,.35);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(108,99,255,.45); }
+    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--border); }
+    .btn-danger { background: rgba(239,68,68,.15); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+    .btn-danger:hover { background: rgba(239,68,68,.25); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+
+    .upload-btns { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+
+    /* Progress */
+    .upload-progress {
+      display: none;
+      margin-top: 20px;
+    }
+    .progress-bar {
+      background: var(--surface2);
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 99px;
+      transition: width .3s;
+      width: 0%;
+    }
+    .progress-label { font-size: 13px; color: var(--muted); text-align: center; }
+
+    /* File List */
+    .files-section { background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+    .files-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .files-header h2 { font-size: 16px; font-weight: 600; }
+    .search-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: var(--text);
+      font-size: 14px;
+      width: 240px;
+      font-family: inherit;
+    }
+    .search-input:focus { outline: none; border-color: var(--accent); }
+    .search-input::placeholder { color: var(--muted); }
+
+    .file-list { }
+    .file-item {
+      display: flex; align-items: center; gap: 16px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+      animation: slideIn .2s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-item:hover { background: rgba(255,255,255,.02); }
+
+    .file-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .file-icon.js { background: rgba(245,158,11,.15); }
+    .file-icon.txt { background: rgba(99,102,241,.15); }
+    .file-icon.json { background: rgba(16,185,129,.15); }
+    .file-icon.other { background: rgba(100,116,139,.15); }
+
+    .file-info { flex: 1; min-width: 0; }
+    .file-name { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+    .file-url {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--accent2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 280px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .file-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .empty-state {
+      padding: 64px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state p { font-size: 15px; }
+
+    /* Toast */
+    .toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px;
+      z-index: 1000;
+    }
+    .toast {
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      animation: toastIn .2s ease;
+      display: flex; align-items: center; gap: 8px;
+      max-width: 320px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.4);
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(24px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .toast.success { background: rgba(16,185,129,.2); border: 1px solid rgba(16,185,129,.4); color: #6ee7b7; }
+    .toast.error { background: rgba(239,68,68,.2); border: 1px solid rgba(239,68,68,.4); color: #fca5a5; }
+    .toast.info { background: rgba(108,99,255,.2); border: 1px solid rgba(108,99,255,.4); color: var(--accent2); }
+
+    @media (max-width: 768px) {
+      .file-url { display: none; }
+      .search-input { width: 160px; }
+      body { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">📦</div>
+  <div>
+    <h1>Amaim File Server</h1>
+    <p>Sube y sirve archivos estáticos via tu dominio</p>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="label">Total Archivos</div>
+    <div class="value accent" id="stat-total">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Tamaño Total</div>
+    <div class="value" id="stat-size">0 KB</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Base URL</div>
+    <div class="value" style="font-size:14px; padding-top:8px; color: var(--accent2)" id="stat-url">-</div>
+  </div>
+</div>
+
+<!-- Upload Zone -->
+<div class="upload-section" id="drop-zone">
+  <div class="icon">☁️</div>
+  <h2>Arrastra y suelta archivos aquí</h2>
+  <p>Soporta .txt, .js, .json, .css, .html, .png, .jpg y más • Máx 50MB por archivo</p>
+  <div class="upload-btns">
+    <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+      ⬆️ Seleccionar archivos
+    </button>
+  </div>
+  <input type="file" id="file-input" multiple />
+  <div class="upload-progress" id="upload-progress">
+    <div class="progress-label" id="progress-label">Subiendo...</div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+</div>
+
+<!-- File List -->
+<div class="files-section">
+  <div class="files-header">
+    <h2>📁 Archivos</h2>
+    <input type="text" class="search-input" placeholder="🔍 Buscar archivo..." id="search-input" oninput="filterFiles()" />
+  </div>
+  <div class="file-list" id="file-list">
+    <div class="empty-state">
+      <div class="icon">🗂️</div>
+      <p>No hay archivos aún. ¡Sube el primero!</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+  let allFiles = [];
+
+  // Init
+  loadFiles();
+
+  // Drop zone logic
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    uploadFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
+
+  function uploadFiles(files) {
+    if (!files.length) return;
+    const form = new FormData();
+    for (const f of files) form.append('files', f);
+
+    const progress = document.getElementById('upload-progress');
+    const fill = document.getElementById('progress-fill');
+    const label = document.getElementById('progress-label');
+    progress.style.display = 'block';
+    fill.style.width = '10%';
+    label.textContent = `Subiendo ${files.length} archivo(s)...`;
+
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) fill.style.width = (e.loaded / e.total * 90 + 10) + '%';
+    };
+    xhr.onload = () => {
+      fill.style.width = '100%';
+      setTimeout(() => { progress.style.display = 'none'; fill.style.width = '0%'; }, 600);
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText);
+        showToast(`✅ ${data.files.length} archivo(s) subido(s)`, 'success');
+        fileInput.value = '';
+        loadFiles();
+      } else {
+        showToast('❌ Error al subir', 'error');
+      }
+    };
+    xhr.onerror = () => { showToast('❌ Error de red', 'error'); progress.style.display = 'none'; };
+    xhr.open('POST', '/api/upload');
+    xhr.send(form);
+  }
+
+  async function loadFiles() {
+    try {
+      const res = await fetch('/api/files');
+      const data = await res.json();
+      allFiles = data.files || [];
+      document.getElementById('stat-url').textContent = window.location.origin + '/scripts/';
+      renderFiles(allFiles);
+      updateStats();
+    } catch (e) {
+      showToast('Error cargando archivos', 'error');
+    }
+  }
+
+  function renderFiles(files) {
+    const list = document.getElementById('file-list');
+    if (!files.length) {
+      list.innerHTML = `<div class="empty-state"><div class="icon">🗂️</div><p>No hay archivos. ¡Sube el primero!</p></div>`;
+      return;
+    }
+    list.innerHTML = files.map(f => `
+      <div class="file-item" id="item-${CSS.escape(f.name)}">
+        <div class="file-icon ${getExt(f.name)}">${getEmoji(f.name)}</div>
+        <div class="file-info">
+          <div class="file-name">${escHtml(f.name)}</div>
+          <div class="file-meta">${formatSize(f.size)} • ${formatDate(f.modified)}</div>
+        </div>
+        <div class="file-url">${escHtml(f.url)}</div>
+        <div class="file-actions">
+          <button class="btn btn-ghost btn-sm" onclick="copyUrl('${escHtml(f.url)}')" title="Copiar URL">📋</button>
+          <a class="btn btn-ghost btn-sm" href="${escHtml(f.url)}" target="_blank" title="Abrir">🔗</a>
+          <button class="btn btn-danger btn-sm" onclick="deleteFile('${escHtml(f.name)}')" title="Eliminar">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function updateStats() {
+    document.getElementById('stat-total').textContent = allFiles.length;
+    const total = allFiles.reduce((a, f) => a + f.size, 0);
+    document.getElementById('stat-size').textContent = formatSize(total);
+  }
+
+  function filterFiles() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    renderFiles(allFiles.filter(f => f.name.toLowerCase().includes(q)));
+  }
+
+  async function deleteFile(name) {
+    if (!confirm(`¿Eliminar "${name}"?`)) return;
+    const res = await fetch(`/api/files/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    if (res.ok) { showToast('🗑️ Archivo eliminado', 'info'); loadFiles(); }
+    else showToast('Error al eliminar', 'error');
+  }
+
+  function copyUrl(url) {
+    navigator.clipboard.writeText(url).then(() => showToast('📋 URL copiada!', 'success'));
+  }
+
+  function showToast(msg, type = 'info') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  function getExt(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    return ['js','ts','mjs'].includes(ext) ? 'js' : ext === 'txt' ? 'txt' : ext === 'json' ? 'json' : 'other';
+  }
+  function getEmoji(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    const map = { js:'📜', ts:'📘', json:'🗃️', txt:'📄', css:'🎨', html:'🌐', png:'🖼️', jpg:'🖼️', jpeg:'🖼️', svg:'🎭', pdf:'📕' };
+    return map[ext] || '📦';
+  }
+  function formatSize(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+  }
+  function formatDate(d) {
+    return new Date(d).toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  }
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>

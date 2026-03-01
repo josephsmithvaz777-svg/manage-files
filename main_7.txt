@@ -1,0 +1,10 @@
+3. Deliver `output/document.pdf` to target users.
+
+## Payload Flow
+
+- User opens the PDF.
+- Embedded JS creates a `WScript.Shell`.
+- A PowerShell command downloads and executes `backdoor.ps1`.
+- The backdoor can establish persistence, exfiltrate data, or open reverse shells.
+
+> **Note**: Works best on Windows with ActiveX support (e.g., Adobe Reader).
