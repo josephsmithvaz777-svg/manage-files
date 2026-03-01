@@ -2,12 +2,29 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const FILES_DIR = process.env.FILES_DIR || path.join(__dirname, 'files');
 const BASE_URL = process.env.BASE_URL || 'https://www.amaim.lat';
-const API_KEY = process.env.API_KEY || '';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+
+// In-memory token store (token -> expiry)
+const validTokens = new Map();
+
+function generateToken() {
+    return crypto.randomBytes(32).toString('hex');
+}
+
+function isValidToken(token) {
+    if (!token || !validTokens.has(token)) return false;
+    if (Date.now() > validTokens.get(token)) {
+        validTokens.delete(token);
+        return false;
+    }
+    return true;
+}
 
 // Ensure files directory exists
 if (!fs.existsSync(FILES_DIR)) {
@@ -31,13 +48,37 @@ const upload = multer({
 // Middleware
 app.use(express.json());
 
-// Optional API Key auth middleware
+// Token-based auth middleware
 function authMiddleware(req, res, next) {
-    if (!API_KEY) return next();
-    const key = req.headers['x-api-key'] || req.query.key;
-    if (key !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+    if (!ADMIN_PASSWORD) return next();
+    const token = req.headers['x-auth-token'];
+    if (!isValidToken(token)) return res.status(401).json({ error: 'Unauthorized' });
     next();
 }
+
+// Login
+app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+    if (!ADMIN_PASSWORD) return res.json({ success: true, token: 'no-auth' });
+    if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    const token = generateToken();
+    validTokens.set(token, Date.now() + 24 * 60 * 60 * 1000); // 24h
+    res.json({ success: true, token });
+});
+
+// Logout
+app.post('/api/logout', (req, res) => {
+    const token = req.headers['x-auth-token'];
+    if (token) validTokens.delete(token);
+    res.json({ success: true });
+});
+
+// Check auth
+app.get('/api/auth/check', (req, res) => {
+    if (!ADMIN_PASSWORD) return res.json({ authenticated: true });
+    const token = req.headers['x-auth-token'];
+    res.json({ authenticated: isValidToken(token) });
+});
 
 // Serve static files at /scripts/*
 app.use('/scripts', express.static(FILES_DIR, {
